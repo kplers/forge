@@ -1964,19 +1964,23 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
     }
 
     @Override
-    public final void setCounters(final Map<CounterType, Integer> allCounters) {
+    public final void setCounters(final Map<CounterType, Integer> allCounters, boolean lki) {
         boolean changed = false;
-        for (CounterType ct : counters.keySet()) {
-            if (removeCounterTimestamp(ct, false)) {
-                changed = true;
+        if (!lki) {
+            for (CounterType ct : counters.keySet()) {
+                if (removeCounterTimestamp(ct, false)) {
+                    changed = true;
+                }
             }
         }
         counters = allCounters;
         view.updateCounters(this);
 
-        for (CounterType ct : counters.keySet()) {
-            if (addCounterTimestamp(ct, false)) {
-                changed = true;
+        if (!lki) {
+            for (CounterType ct : counters.keySet()) {
+                if (addCounterTimestamp(ct, false)) {
+                    changed = true;
+                }
             }
         }
         if (changed) {

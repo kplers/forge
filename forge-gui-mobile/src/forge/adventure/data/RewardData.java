@@ -262,6 +262,27 @@ public class RewardData implements Serializable {
 
                     break;
                 }
+                case "landSketchbookShop":
+                    CardEdition.Collection editions = FModel.getMagicDb().getEditions();
+                    Predicate<CardEdition> filter = CardEdition.Predicates.hasBasicLands;
+                    List<CardEdition> allEditions = new ArrayList<>();
+                    StreamUtil.stream(editions)
+                            .filter(filter)
+                            .forEach(allEditions::add);
+
+                    // Ideally we would filter out sketchbooks we already own, does that happen?
+
+                    endDate = endDate == 0 ? 9999 : endDate;
+                    // This is dumb
+                    allEditions.removeIf(q -> q.getDate().getYear() < startDate || q.getDate().getYear()+1900 > endDate);
+                    for(int i=0;i<count+addedCount;i++) {
+
+
+                        //ret.add(new Reward(AdventureEventController.instance().generateBooster(allEditions.get(WorldSave.getCurrentSave().getWorld().getRandom().nextInt(allEditions.size())).getCode())));
+                    }
+                    break;
+
+
                 case "cardPack":
                     if(cardPack!=null)
                     {

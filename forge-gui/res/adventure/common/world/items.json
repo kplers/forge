@@ -171,6 +171,162 @@
     "questItem": true
   },
   {
+    "name": "Landscape Sketchbook - Zendikar",
+    "description": "A leather bound notebook filled with sketches of floating landmasses and ancient ruins",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Innistrad",
+    "description": "A leather bound notebook containing eerie sketches of foggy, gothic landscapes",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Ravnica Allegiance",
+    "description": "A leather bound notebook filled with intricate sketches of a vast cityscape",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Theros",
+    "description": "A leather bound notebook containing sketches of ancient monuments and starry skies",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Kamigawa Neon Dynasty",
+    "description": "A leather bound notebook containing sketches of spiritual shrines and cherry blossoms",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Dominaria",
+    "description": "A leather bound notebook containing diverse sketches of the multiverse's nexus",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Lorwyn",
+    "description": "A leather bound notebook filled with whimsical sketches of idyllic meadows",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Shards of Alara",
+    "description": "A leather bound notebook containing vibrant sketches of five distinct terrains",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Amonkhet",
+    "description": "A leather bound notebook filled with sketches of desert landscapes and grand monuments",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Ixalan",
+    "description": "A leather bound notebook containing sketches of lush jungles and ancient temples",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - 30th Anniversary Edition",
+    "description": "A leather bound notebook filled with sketches of iconic landscapes from throughout Magic's history",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Aetherdrift",
+    "description": "A leather bound notebook containing sketches of futuristic landscapes blending magic and technology",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Strixhaven: School of Mages",
+    "description": "A leather bound notebook filled with sketches of a magical university and its diverse campus grounds",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Streets of New Capenna",
+    "description": "A leather bound notebook containing art deco sketches of towering skyscrapers and elegant plazas",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Kaldheim",
+    "description": "A leather bound notebook filled with sketches of snow-covered realms and Viking-inspired landscapes",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Ikoria: Lair of Behemoths",
+    "description": "A leather bound notebook containing sketches of bizarre wilderness and enormous creatures",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Thrones of Eldraine",
+    "description": "A leather bound notebook filled with fairy tale sketches of enchanted castles and mystical groves",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Shadows Over Innistrad",
+    "description": "A leather bound notebook containing sketches of twisted landscapes under the influence of eldritch horrors",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Battle for Zendikar",
+    "description": "A leather bound notebook filled with sketches of a world being consumed by alien entities",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Khans of Tarkir",
+    "description": "A leather bound notebook containing sketches of a wartorn land with five distinct clans",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Hour of Devastation",
+    "description": "A leather bound notebook filled with sketches of monuments crumbling under draconic influence",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Kaladesh",
+    "description": "A leather bound notebook containing intricate sketches of brass and copper cityscapes",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Mercadian Masques",
+    "description": "A leather bound notebook filled with sketches of an isolated city-state and surrounding countryside",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - New Phyrexia",
+    "description": "A leather bound notebook filled with disturbing sketches of a metal-infused wasteland",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Mirrodin Besieged",
+    "description": "A leather bound notebook containing sketches of a metal world at war",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
+    "name": "Landscape Sketchbook - Scars of Mirrodin",
+    "description": "A leather bound notebook filled with sketches of a metal paradise being slowly corrupted",
+    "iconName": "LandscapeSketchbook",
+    "questItem": true
+  },
+  {
     "name": "Chandra's Tome",
     "description": "Draft a Chandra themed card that can be cast with mana of any color.",
     "equipmentSlot": "Left",

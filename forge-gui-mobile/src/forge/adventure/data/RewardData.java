@@ -2,6 +2,7 @@ package forge.adventure.data;
 
 import com.badlogic.gdx.utils.Array;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import forge.StaticData;
 import forge.adventure.util.*;
 import forge.adventure.world.WorldSave;
@@ -263,26 +264,20 @@ public class RewardData implements Serializable {
                     break;
                 }
                 case "landSketchbookShop":
-                    CardEdition.Collection editions = FModel.getMagicDb().getEditions();
-                    Predicate<CardEdition> filter = CardEdition.Predicates.hasBasicLands;
-                    List<CardEdition> allEditions = new ArrayList<>();
-                    StreamUtil.stream(editions)
-                            .filter(filter)
-                            .forEach(allEditions::add);
+                    List<ItemData> sketchbookItems = Lists.newArrayList(ItemData.getAllItems());
+                    sketchbookItems.removeIf(new Predicate<ItemData>() {
+                        @Override
+                        public boolean test(ItemData itemData) {
+                            return !itemData.getName().contains("Landscape Sketchbook");
+                        }
+                    });
 
-                    // Ideally we would filter out sketchbooks we already own, does that happen?
-
-                    endDate = endDate == 0 ? 9999 : endDate;
-                    // This is dumb
-                    allEditions.removeIf(q -> q.getDate().getYear() < startDate || q.getDate().getYear()+1900 > endDate);
-                    for(int i=0;i<count+addedCount;i++) {
-
-
-                        //ret.add(new Reward(AdventureEventController.instance().generateBooster(allEditions.get(WorldSave.getCurrentSave().getWorld().getRandom().nextInt(allEditions.size())).getCode())));
+                    for(int i=0; i < count + addedCount; i++) {
+                        ItemData item = sketchbookItems.get(WorldSave.getCurrentSave().getWorld().getRandom().nextInt(sketchbookItems.size()));
+                        ret.add(new Reward(item));
                     }
+
                     break;
-
-
                 case "cardPack":
                     if(cardPack!=null)
                     {

@@ -237,113 +237,455 @@ public class AnimateAi extends SpellAbilityAi {
     }
 
     @Override
-    public boolean chkAIDrawback(SpellAbility sa, Player aiPlayer) {
-        if (sa.usesTargeting()) {
-            sa.resetTargets();
-            return animateTgtAI(sa);
-        }
-
-        return true;
-    }
-
-    @Override
-    protected boolean doTriggerAINoCost(Player aiPlayer, SpellAbility sa, boolean mandatory) {
+    protected AiAbilityDecision doTriggerAINoCost(Player aiPlayer, SpellAbility sa, boolean mandatory) {
         if (sa.usesTargeting()) {
             if(animateTgtAI(sa))
-                return true;
+                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
             else if (!mandatory)
-                return false;
+                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
             else {
                 // fallback if animate is mandatory
                 sa.resetTargets();
                 List<Card> list = CardUtil.getValidCardsToTarget(sa);
                 if (list.isEmpty()) {
-                    return false;
+                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
                 }
                 Card toAnimate = ComputerUtilCard.getWorstAI(list);
                 rememberAnimatedThisTurn(aiPlayer, toAnimate);
                 sa.getTargets().add(toAnimate);
             }
         }
-        return true;
+        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
     }
 
     @Override
-    public boolean confirmAction(Player player, SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
-        return player.getGame().getPhaseHandler().getPhase().isBefore(PhaseType.MAIN2);
+    public AiAbilityDecision chkAIDrawback(SpellAbility sa, Player aiPlayer) {
+        if (sa.usesTargeting()) {
+            sa.resetTargets();
+            return animateTgtAI(sa);
+        }
+
+        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
     }
 
-    private boolean animateTgtAI(final SpellAbility sa) {
-        final Player ai = sa.getActivatingPlayer();
-        final PhaseHandler ph = ai.getGame().getPhaseHandler();
-        final String logic = sa.getParamOrDefault("AILogic", "");
-        final boolean alwaysActivatePWAbility = sa.isPwAbility()
-                && sa.getPayCosts().hasSpecificCostType(CostPutCounter.class)
-                && sa.usesTargeting()
-                && sa.getTargetRestrictions().getMinTargets(sa.getHostCard(), sa) == 0;
-
-        final CardType types = new CardType(true);
-        if (sa.hasParam("Types")) {
-            types.addAll(Arrays.asList(sa.getParam("Types").split(",")));
+    @Override
+    protected boolean checkApiLogic(Player aiPlayer, SpellAbility sa) {
+        final Card source = sa.getHostCard();
+        final Game game = aiPlayer.getGame();
+        final PhaseHandler ph = game.getPhaseHandler();
+        if (!sa.metConditions() && sa.getSubAbility() == null) {
+            return false; // what is this for?
+        }
+        if (!game.getStack().isEmpty() && game.getStack().peekAbility().getApi() == ApiType.Sacrifice) {
+            if (!isAnimatedThisTurn(aiPlayer, source)) {
+                rememberAnimatedThisTurn(aiPlayer, source);
+                return true;  // interrupt sacrifice
+            }
+        }
+        if (!ComputerUtilCost.checkTapTypeCost(aiPlayer, sa.getPayCosts(), source, sa, new CardCollection())) {
+            return false; // prevent crewing with equal or better creatures
         }
 
-        final Game game = ai.getGame();
-        CardCollection list = CardLists.getTargetableCards(game.getCardsIn(ZoneType.Battlefield), sa);
+        if (sa.costHasManaX() && sa.getSVar("X").equals("Count$xPaid")) {
+            // Set PayX here to maximum value.
+            final int xPay = ComputerUtilCost.getMaxXValue(sa, aiPlayer, sa.isTrigger());
 
-        // Filter AI-specific targets if provided
-        list = ComputerUtil.filterAITgts(sa, ai, list, false);
-
-        // list is empty, no possible targets
-        if (list.isEmpty() && !alwaysActivatePWAbility) {
-            return false;
+            sa.setXManaCostPaid(xPay);
         }
 
-        // something is used for animate into creature
-        if (types.isCreature()) {
-            Map<Card, Integer> data = Maps.newHashMap();
-            for (final Card c : list) {
-                // don't use Permanent animate on something that would leave the field
-                if (c.hasSVar("EndOfTurnLeavePlay") && "Permanent".equals(sa.getParam("Duration"))) {
-                    continue;
+        if (!sa.usesTargeting()) {
+            final List<Card> defined = AbilityUtils.getDefinedCards(source, sa.getParam("Defined"), sa);
+            boolean bFlag = false;
+            boolean givesHaste = sa.hasParam("Keywords") && sa.getParam("Keywords").contains("Haste");
+            for (final Card c : defined) {
+                bFlag |= !c.isCreature() && !c.isTapped()
+                        && (!c.hasSickness() || givesHaste || !ph.isPlayerTurn(aiPlayer))
+                        && !c.isEquipping();
+
+                // for creatures that could be improved (like Figure of Destiny)
+                if (!bFlag && c.isCreature() && ("Permanent".equals(sa.getParam("Duration")) || (!c.isTapped() && !c.isSick()))) {
+                    int power = -5;
+                    if (sa.hasParam("Power")) {
+                        power = AbilityUtils.calculateAmount(c, sa.getParam("Power"), sa);
+                    }
+                    int toughness = -5;
+                    if (sa.hasParam("Toughness")) {
+                        toughness = AbilityUtils.calculateAmount(c, sa.getParam("Toughness"), sa);
+                    }
+                    if (sa.hasParam("Keywords")) {
+                        for (String keyword : sa.getParam("Keywords").split(" & ")) {
+                            if (!c.hasKeyword(keyword)) {
+                                bFlag = true;
+                            }
+                        }
+                    }
+                    if (power + toughness > c.getCurrentPower() + c.getCurrentToughness()) {
+                        if (!c.isTapped() || (ph.inCombat() && game.getCombat().isAttacking(c))) {
+                            bFlag = true;
+                        }
+                    }
                 }
 
-                // non-Curse Animate not on Opponent Stuff if able
-                if (c.getController().isOpponentOf(ai) && !sa.isCurse()) {
-                    continue;
+                if (!isSorcerySpeed(sa, aiPlayer) && !"Permanent".equals(sa.getParam("Duration"))) {
+                    if (sa.isCrew() && c.isCreature()) {
+                        // Do not try to crew a vehicle which is already a creature
+                        return false;
+                    }
+                    Card animatedCopy = becomeAnimated(c, sa);
+                    if (ph.isPlayerTurn(aiPlayer)
+                            && !ComputerUtilCard.doesSpecifiedCreatureAttackAI(aiPlayer, animatedCopy)) {
+                        return false;
+                    }
+                    if (ph.getPlayerTurn().isOpponentOf(aiPlayer)
+                            && !ComputerUtilCard.doesSpecifiedCreatureBlock(aiPlayer, animatedCopy)) {
+                        return false;
+                    }
+                    // also check if maybe there are static effects applied to the animated copy that would matter
+                    // (e.g. Myth Realized)
+                    if (animatedCopy.getCurrentPower() + animatedCopy.getCurrentToughness() >
+                            c.getCurrentPower() + c.getCurrentToughness()) {
+                        if (!isAnimatedThisTurn(aiPlayer, sa.getHostCard())) {
+                            if (!c.isTapped() || (ph.inCombat() && game.getCombat().isAttacking(c))) {
+                                bFlag = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (bFlag) {
+                rememberAnimatedThisTurn(aiPlayer, sa.getHostCard());
+            }
+            return bFlag; // All of the defined stuff is animated, not very useful
+        } else {
+            sa.resetTargets();
+            return animateTgtAI(sa);
+        }
+
+    }
+
+    @Override
+    protected AiAbilityDecision doTriggerAINoCost(Player aiPlayer, SpellAbility sa, boolean mandatory) {
+        if (sa.usesTargeting()) {
+            if(animateTgtAI(sa))
+                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+            else if (!mandatory)
+                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+            else {
+                // fallback if animate is mandatory
+                sa.resetTargets();
+                List<Card> list = CardUtil.getValidCardsToTarget(sa);
+                if (list.isEmpty()) {
+                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+                }
+                Card toAnimate = ComputerUtilCard.getWorstAI(list);
+                rememberAnimatedThisTurn(aiPlayer, toAnimate);
+                sa.getTargets().add(toAnimate);
+            }
+        }
+        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+    }
+
+    @Override
+    protected AiAbilityDecision chkAIDrawback(SpellAbility sa, Player aiPlayer) {
+        if (sa.usesTargeting()) {
+            sa.resetTargets();
+            return animateTgtAI(sa);
+        }
+
+        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+    }
+
+    @Override
+    protected boolean checkApiLogic(Player aiPlayer, SpellAbility sa) {
+        final Card source = sa.getHostCard();
+        final Game game = aiPlayer.getGame();
+        final PhaseHandler ph = game.getPhaseHandler();
+        if (!sa.metConditions() && sa.getSubAbility() == null) {
+            return false; // what is this for?
+        }
+        if (!game.getStack().isEmpty() && game.getStack().peekAbility().getApi() == ApiType.Sacrifice) {
+            if (!isAnimatedThisTurn(aiPlayer, source)) {
+                rememberAnimatedThisTurn(aiPlayer, source);
+                return true;  // interrupt sacrifice
+            }
+        }
+        if (!ComputerUtilCost.checkTapTypeCost(aiPlayer, sa.getPayCosts(), source, sa, new CardCollection())) {
+            return false; // prevent crewing with equal or better creatures
+        }
+
+        if (sa.costHasManaX() && sa.getSVar("X").equals("Count$xPaid")) {
+            // Set PayX here to maximum value.
+            final int xPay = ComputerUtilCost.getMaxXValue(sa, aiPlayer, sa.isTrigger());
+
+            sa.setXManaCostPaid(xPay);
+        }
+
+        if (!sa.usesTargeting()) {
+            final List<Card> defined = AbilityUtils.getDefinedCards(source, sa.getParam("Defined"), sa);
+            boolean bFlag = false;
+            boolean givesHaste = sa.hasParam("Keywords") && sa.getParam("Keywords").contains("Haste");
+            for (final Card c : defined) {
+                bFlag |= !c.isCreature() && !c.isTapped()
+                        && (!c.hasSickness() || givesHaste || !ph.isPlayerTurn(aiPlayer))
+                        && !c.isEquipping();
+
+                // for creatures that could be improved (like Figure of Destiny)
+                if (!bFlag && c.isCreature() && ("Permanent".equals(sa.getParam("Duration")) || (!c.isTapped() && !c.isSick()))) {
+                    int power = -5;
+                    if (sa.hasParam("Power")) {
+                        power = AbilityUtils.calculateAmount(c, sa.getParam("Power"), sa);
+                    }
+                    int toughness = -5;
+                    if (sa.hasParam("Toughness")) {
+                        toughness = AbilityUtils.calculateAmount(c, sa.getParam("Toughness"), sa);
+                    }
+                    if (sa.hasParam("Keywords")) {
+                        for (String keyword : sa.getParam("Keywords").split(" & ")) {
+                            if (!c.hasKeyword(keyword)) {
+                                bFlag = true;
+                            }
+                        }
+                    }
+                    if (power + toughness > c.getCurrentPower() + c.getCurrentToughness()) {
+                        if (!c.isTapped() || (ph.inCombat() && game.getCombat().isAttacking(c))) {
+                            bFlag = true;
+                        }
+                    }
                 }
 
-                // if tapped it might not attack or block
-                if (c.isTapped()) {
-                    continue;
+                if (!isSorcerySpeed(sa, aiPlayer) && !"Permanent".equals(sa.getParam("Duration"))) {
+                    if (sa.isCrew() && c.isCreature()) {
+                        // Do not try to crew a vehicle which is already a creature
+                        return false;
+                    }
+                    Card animatedCopy = becomeAnimated(c, sa);
+                    if (ph.isPlayerTurn(aiPlayer)
+                            && !ComputerUtilCard.doesSpecifiedCreatureAttackAI(aiPlayer, animatedCopy)) {
+                        return false;
+                    }
+                    if (ph.getPlayerTurn().isOpponentOf(aiPlayer)
+                            && !ComputerUtilCard.doesSpecifiedCreatureBlock(aiPlayer, animatedCopy)) {
+                        return false;
+                    }
+                    // also check if maybe there are static effects applied to the animated copy that would matter
+                    // (e.g. Myth Realized)
+                    if (animatedCopy.getCurrentPower() + animatedCopy.getCurrentToughness() >
+                            c.getCurrentPower() + c.getCurrentToughness()) {
+                        if (!isAnimatedThisTurn(aiPlayer, sa.getHostCard())) {
+                            if (!c.isTapped() || (ph.inCombat() && game.getCombat().isAttacking(c))) {
+                                bFlag = true;
+                            }
+                        }
+                    }
                 }
+            }
+            if (bFlag) {
+                rememberAnimatedThisTurn(aiPlayer, sa.getHostCard());
+            }
+            return bFlag; // All of the defined stuff is animated, not very useful
+        } else {
+            sa.resetTargets();
+            return animateTgtAI(sa);
+        }
 
-                // make Animated copy and evaluate it
-                final Card animatedCopy = becomeAnimated(c, sa);
-                int aValue = ComputerUtilCard.evaluateCreature(animatedCopy);
+    }
 
-                // animated creature has zero toughness, don't do that unless the card will receive a counter to buff its toughness
-                if (animatedCopy.getNetToughness() <= 0) {
-                    boolean buffedToughness = false;
-                    SpellAbility sub = sa.findSubAbilityByType(ApiType.PutCounter);
-                    if (sub != null) {
-                        if (animatedCopy.canReceiveCounters(CounterEnumType.P1P1)
-                                && "Targeted".equals(sub.getParam("Defined"))
-                                && "P1P1".equals(sub.getParam("CounterType"))) {
-                            buffedToughness = true;
+    @Override
+    protected AiAbilityDecision doTriggerAINoCost(Player aiPlayer, SpellAbility sa, boolean mandatory) {
+        if (sa.usesTargeting()) {
+            if(animateTgtAI(sa))
+                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+            else if (!mandatory)
+                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+            else {
+                // fallback if animate is mandatory
+                sa.resetTargets();
+                List<Card> list = CardUtil.getValidCardsToTarget(sa);
+                if (list.isEmpty()) {
+                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+                }
+                Card toAnimate = ComputerUtilCard.getWorstAI(list);
+                rememberAnimatedThisTurn(aiPlayer, toAnimate);
+                sa.getTargets().add(toAnimate);
+            }
+        }
+        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+    }
+
+    @Override
+    protected AiAbilityDecision chkAIDrawback(SpellAbility sa, Player aiPlayer) {
+        if (sa.usesTargeting()) {
+            sa.resetTargets();
+            return animateTgtAI(sa);
+        }
+
+        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+    }
+
+    @Override
+    protected boolean checkApiLogic(Player aiPlayer, SpellAbility sa) {
+        final Card source = sa.getHostCard();
+        final Game game = aiPlayer.getGame();
+        final PhaseHandler ph = game.getPhaseHandler();
+        if (!sa.metConditions() && sa.getSubAbility() == null) {
+            return false; // what is this for?
+        }
+        if (!game.getStack().isEmpty() && game.getStack().peekAbility().getApi() == ApiType.Sacrifice) {
+            if (!isAnimatedThisTurn(aiPlayer, source)) {
+                rememberAnimatedThisTurn(aiPlayer, source);
+                return true;  // interrupt sacrifice
+            }
+        }
+        if (!ComputerUtilCost.checkTapTypeCost(aiPlayer, sa.getPayCosts(), source, sa, new CardCollection())) {
+            return false; // prevent crewing with equal or better creatures
+        }
+
+        if (sa.costHasManaX() && sa.getSVar("X").equals("Count$xPaid")) {
+            // Set PayX here to maximum value.
+            final int xPay = ComputerUtilCost.getMaxXValue(sa, aiPlayer, sa.isTrigger());
+
+            sa.setXManaCostPaid(xPay);
+        }
+
+        if (!sa.usesTargeting()) {
+            final List<Card> defined = AbilityUtils.getDefinedCards(source, sa.getParam("Defined"), sa);
+            boolean bFlag = false;
+            boolean givesHaste = sa.hasParam("Keywords") && sa.getParam("Keywords").contains("Haste");
+            for (final Card c : defined) {
+                bFlag |= !c.isCreature() && !c.isTapped()
+                        && (!c.hasSickness() || givesHaste || !ph.isPlayerTurn(aiPlayer))
+                        && !c.isEquipping();
+
+                // for creatures that could be improved (like Figure of Destiny)
+                if (!bFlag && c.isCreature() && ("Permanent".equals(sa.getParam("Duration")) || (!c.isTapped() && !c.isSick()))) {
+                    int power = -5;
+                    if (sa.hasParam("Power")) {
+                        power = AbilityUtils.calculateAmount(c, sa.getParam("Power"), sa);
+                        if (power == 0 && "PTByCMC".equals(sa.getParam("AILogic"))) {
+                            power = card.getManaCost().getCMC();
+                        }
+                    }
+                    int toughness = -5;
+                    if (sa.hasParam("Toughness")) {
+                        toughness = AbilityUtils.calculateAmount(c, sa.getParam("Toughness"), sa);
+                        if (toughness == 0 && "PTByCMC".equals(sa.getParam("AILogic"))) {
+                            toughness = card.getManaCost().getCMC();
                         }
                     }
 
-                    if (!buffedToughness) {
-                        continue;
+                    final CardType types = new CardType(true);
+                    if (sa.hasParam("Types")) {
+                        types.addAll(Arrays.asList(sa.getParam("Types").split(",")));
                     }
-                }
 
-                // if original is already a Creature,
-                // evaluate their value to check if it becomes better
-                if (c.isCreature()) {
-                    int cValue = ComputerUtilCard.evaluateCreature(c);
-                    if (cValue >= aValue)
-                        continue;
+                    final CardType removeTypes = new CardType(true);
+                    if (sa.hasParam("RemoveTypes")) {
+                        removeTypes.addAll(Arrays.asList(sa.getParam("RemoveTypes").split(",")));
+                    }
+
+                    // allow ChosenType - overrides anything else specified
+                    if (types.hasSubtype("ChosenType")) {
+                        types.clear();
+                        types.add(source.getChosenType());
+                    }
+
+                    final List<String> keywords = Lists.newArrayList();
+                    if (sa.hasParam("Keywords")) {
+                        keywords.addAll(Arrays.asList(sa.getParam("Keywords").split(" & ")));
+                    }
+
+                    final List<String> removeKeywords = Lists.newArrayList();
+                    if (sa.hasParam("RemoveKeywords")) {
+                        removeKeywords.addAll(Arrays.asList(sa.getParam("RemoveKeywords").split(" & ")));
+                    }
+
+                    final List<String> hiddenKeywords = Lists.newArrayList();
+                    if (sa.hasParam("HiddenKeywords")) {
+                        hiddenKeywords.addAll(Arrays.asList(sa.getParam("HiddenKeywords").split(" & ")));
+                    }
+                    // allow SVar substitution for keywords
+                    for (int i = 0; i < keywords.size(); i++) {
+                        final String k = keywords.get(i);
+                        if (source.hasSVar(k)) {
+                            keywords.add(source.getSVar(k));
+                            keywords.remove(k);
+                        }
+                    }
+
+                    // colors to be added or changed to
+                    ColorSet finalColors = null;
+                    if (sa.hasParam("Colors")) {
+                        final String colors = sa.getParam("Colors");
+                        if (colors.equals("ChosenColor")) {
+                            finalColors = ColorSet.fromNames(source.getChosenColors());
+                        } else {
+                            finalColors = ColorSet.fromNames(colors.split(","));
+                        }
+                    }
+
+                    // abilities to add to the animated being
+                    final List<String> abilities = Lists.newArrayList();
+                    if (sa.hasParam("Abilities")) {
+                        abilities.addAll(Arrays.asList(sa.getParam("Abilities").split(",")));
+                    }
+
+                    // replacement effects to add to the animated being
+                    final List<String> replacements = Lists.newArrayList();
+                    if (sa.hasParam("Replacements")) {
+                        replacements.addAll(Arrays.asList(sa.getParam("Replacements").split(",")));
+                    }
+
+                    // triggers to add to the animated being
+                    final List<String> triggers = Lists.newArrayList();
+                    if (sa.hasParam("Triggers")) {
+                        triggers.addAll(Arrays.asList(sa.getParam("Triggers").split(",")));
+                    }
+
+                    // static abilities to add to the animated being
+                    final List<String> stAbs = Lists.newArrayList();
+                    if (sa.hasParam("staticAbilities")) {
+                        stAbs.addAll(Arrays.asList(sa.getParam("staticAbilities").split(",")));
+                    }
+
+                    // sVars to add to the animated being
+                    final List<String> sVars = Lists.newArrayList();
+                    if (sa.hasParam("sVars")) {
+                        sVars.addAll(Arrays.asList(sa.getParam("sVars").split(",")));
+                    }
+
+                    AnimateEffectBase.doAnimate(card, sa, power, toughness, types, removeTypes, finalColors,
+                            keywords, removeKeywords, hiddenKeywords,
+                            abilities, triggers, replacements, stAbs,
+                            timestamp, "Permanent");
+
+                    // check if animate added static Abilities
+                    CardTraitChanges traits = card.getChangedCardTraits().get(timestamp, 0);
+                    if (traits != null) {
+                        for (StaticAbility stAb : traits.getStaticAbilities()) {
+                            if (stAb.checkMode(StaticAbilityMode.Continuous)) {
+                                for (final StaticAbilityLayer layer : stAb.getLayers()) {
+                                    StaticAbilityContinuous.applyContinuousAbility(stAb, new CardCollection(card), layer);
+                                }
+                            }
+                        }
+                    }
+
+                    // give sVars
+                    if (sa.hasParam("sVars")) {
+                        Map<String, String> sVarsMap = Maps.newHashMap();
+                        for (final String s : sa.getParam("sVars").split(",")) {
+                            String actualsVar = AbilityUtils.getSVar(sa, s);
+                            String name = s;
+                            if (actualsVar.startsWith("SVar:")) {
+                                actualsVar = actualsVar.split("SVar:")[1];
+                                name = actualsVar.split(":")[0];
+                                actualsVar = actualsVar.split(":")[1];
+                            }
+                            sVarsMap.put(name, actualsVar);
+                        }
+                        card.addChangedSVars(sVarsMap, timestamp, 0);
+                    }
+                    ComputerUtilCard.applyStaticContPT(game, card, null);
                 }
 
                 // if its player turn,

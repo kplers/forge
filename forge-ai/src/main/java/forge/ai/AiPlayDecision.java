@@ -1,15 +1,27 @@
 package forge.ai;
 
 public enum AiPlayDecision {
-    WillPlay, 
+    // Play decision reasons
+    WillPlay,
+    AddBoardPresence,
+    Removal,
+    Tempo,
+    CardAdvantage,
+
+    // Play later decisions
+    WaitForMain2,
+    AnotherTime,
+
+    // Don't play decision reasons,
     CantPlaySa,
     CantPlayAi,
     CantAfford,
     CantAffordX,
-    WaitForMain2,
-    AnotherTime,
     MissingNeededCards,
+    TimingRestrictions,
+    MissingPhaseRestrictions,
     NeedsToPlayCriteriaNotMet,
+    StopRunawayActivations,
     TargetingFailed,
     CostNotAcceptable,
     WouldDestroyLegend,
@@ -17,5 +29,9 @@ public enum AiPlayDecision {
     WouldBecomeZeroToughnessCreature,
     WouldDestroyWorldEnchantment,
     BadEtbEffects,
-    CurseEffects
+    CurseEffects;
+
+    public boolean willingToPlay() {
+        return this == WillPlay || this == AddBoardPresence || this == Removal || this == Tempo || this == CardAdvantage;
+    }
 }

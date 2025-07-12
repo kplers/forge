@@ -1,5 +1,7 @@
 package forge.ai.ability;
 
+import forge.ai.AiAbilityDecision;
+import forge.ai.AiPlayDecision;
 import forge.ai.*;
 import forge.game.Game;
 import forge.game.ability.AbilityUtils;
@@ -19,7 +21,7 @@ import java.util.Map;
 
 public class ChangeZoneAllAi extends SpellAbilityAi {
     @Override
-    protected boolean canPlayAI(Player ai, SpellAbility sa) {
+    protected AiAbilityDecision canPlayAI(Player ai, SpellAbility sa) {
         // Change Zone All, can be any type moving from one zone to another
         final Cost abCost = sa.getPayCosts();
         final Card source = sa.getHostCard();
@@ -32,14 +34,14 @@ public class ChangeZoneAllAi extends SpellAbilityAi {
         if (abCost != null) {
             // AI currently disabled for these costs
             if (!ComputerUtilCost.checkLifeCost(ai, abCost, source, 4, sa)) {
-                return false;
+                return new AiAbilityDecision(0, AiPlayDecision.CostNotAcceptable);
             }
 
             if (!ComputerUtilCost.checkDiscardCost(ai, abCost, source, sa)) {
                 boolean aiLogicAllowsDiscard = aiLogic.startsWith("DiscardAll");
 
                 if (!aiLogicAllowsDiscard) {
-                    return false;
+                    return new AiAbilityDecision(0, AiPlayDecision.CostNotAcceptable);
                 }
             }
         }

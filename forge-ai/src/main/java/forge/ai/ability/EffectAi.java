@@ -35,7 +35,7 @@ import java.util.Map;
 
 public class EffectAi extends SpellAbilityAi {
     @Override
-    protected boolean canPlayAI(final Player ai,final SpellAbility sa) {
+    protected AiAbilityDecision canPlayAI(final Player ai, final SpellAbility sa) {
         final Game game = ai.getGame();
         boolean randomReturn = MyRandom.getRandom().nextFloat() <= .6667;
         String logic = "";
@@ -287,7 +287,7 @@ public class EffectAi extends SpellAbilityAi {
             } else if (logic.equals("Burn")) {
                 // for DamageDeal sub-abilities (eg. Wild Slash, Skullcrack)
                 SpellAbility burn = sa.getSubAbility();
-                return SpellApiToAi.Converter.get(burn).canPlayAIWithSubs(ai, burn);
+                return SpellApiToAi.Converter.get(burn).canPlayAIWithSubs(ai, burn).willingToPlay();
             } else if (logic.equals("YawgmothsWill")) {
                 return SpecialCardAi.YawgmothsWill.consider(ai, sa);
             } else if (logic.startsWith("NeedCreatures")) {
@@ -416,7 +416,7 @@ public class EffectAi extends SpellAbilityAi {
     }
 
     @Override
-    protected boolean doTriggerAINoCost(final Player aiPlayer, final SpellAbility sa, final boolean mandatory) {
+    protected AiAbilityDecision doTriggerAINoCost(final Player aiPlayer, final SpellAbility sa, final boolean mandatory) {
         if (sa.hasParam("AILogic")) {
             if (canPlayAI(aiPlayer, sa)) {
                 return true; // if false, fall through further to do the mandatory stuff

@@ -1269,15 +1269,15 @@ public final class CMatchUI
 
     @Override
     public void notifyStackAddition(GameEventSpellAbilityCast event) {
-        SpellAbility sa = event.sa;
+        SpellAbility sa = event.sa();
         String stackNotificationPolicy = FModel.getPreferences().getPref(FPref.UI_STACK_EFFECT_NOTIFICATION_POLICY);
         boolean isAi = sa.getActivatingPlayer().isAI();
         boolean isTrigger = sa.isTrigger();
-        int stackIndex = event.stackIndex;
+        int stackIndex = event.stackIndex();
         if (stackIndex == nextNotifiableStackIndex) {
             if (ForgeConstants.STACK_EFFECT_NOTIFICATION_ALWAYS.equals(stackNotificationPolicy) || (ForgeConstants.STACK_EFFECT_NOTIFICATION_AI_AND_TRIGGERED.equals(stackNotificationPolicy) && (isAi || isTrigger))) {
                 // We can go and show the modal
-                SpellAbilityStackInstance si = event.si;
+                SpellAbilityStackInstance si = event.si();
 
                 MigLayout migLayout = new MigLayout("insets 15, left, gap 30, fill");
                 JPanel mainPanel = new JPanel(migLayout);
@@ -1438,8 +1438,8 @@ public final class CMatchUI
     private int getRotation(CardView cardView) {
         final int rotation;
         if (cardView.isSplitCard()) {
-            String cardName = cardView.getName();
-            if (cardName.isEmpty()) { cardName = cardView.getAlternateState().getName(); }
+            String cardName = cardView.getOracleName();
+            if (cardName.isEmpty()) { cardName = cardView.getAlternateState().getOracleName(); }
 
             PaperCard pc = StaticData.instance().getCommonCards().getCard(cardName);
             boolean hasKeywordAftermath = pc != null && Card.getCardForUi(pc).hasKeyword(Keyword.AFTERMATH);
@@ -1514,9 +1514,9 @@ public final class CMatchUI
         Set<FullControlFlag> controlFlags = getGameView().getGame().getPlayer(pv).getController().getFullControl();
         final String lblFullControl = Localizer.getInstance().getMessage("lblFullControl");
         final JPopupMenu menu = new JPopupMenu(lblFullControl);
-        GuiUtils.addMenuItem(menu, lblFullControl, null, () -> {
-            FOptionPane.showMessageDialog(Localizer.getInstance().getMessage("lblFullControlDetails"), lblFullControl);
-        });
+        menu.add(
+                GuiUtils.createMenuItem("- " + lblFullControl + " -", null, null, false, true)
+        );
 
         addFullControlEntry(menu, "lblChooseCostOrder", FullControlFlag.ChooseCostOrder, controlFlags);
         addFullControlEntry(menu, "lblChooseCostReductionOrder", FullControlFlag.ChooseCostReductionOrderAndVariableAmount, controlFlags);

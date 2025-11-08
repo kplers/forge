@@ -20,7 +20,6 @@ package forge.game.ability;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import forge.card.CardStateName;
-import forge.card.CardType;
 import forge.game.CardTraitBase;
 import forge.game.IHasSVars;
 import forge.game.ability.effects.CharmEffect;
@@ -34,7 +33,6 @@ import forge.util.FileSection;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -63,7 +61,9 @@ public final class AbilityFactory {
             "CantChooseSubAbility", // Can't choose a player via ChoosePlayer
             "RegenerationAbility", // for Regeneration Effect
             "ReturnAbility", // for Delayed Trigger on Magpie
-            "GiftAbility" // for Promise Gift
+            "GiftAbility", // for Promise Gift
+            "VoteSubAbility", // for Vote with VoteCard
+            "VoteTiedAbility" // for fallback to Choices
         );
 
     public enum AbilityRecordType {
@@ -200,15 +200,6 @@ public final class AbilityFactory {
         final Card hostCard = state.getCard();
         TargetRestrictions abTgt = mapParams.containsKey("ValidTgts") ? readTarget(mapParams) : null;
 
-        if (api == ApiType.CopySpellAbility || api == ApiType.Counter || api == ApiType.ChangeTargets || api == ApiType.ControlSpell) {
-            // Since all "CopySpell" ABs copy things on the Stack no need for it to be everywhere
-            // Since all "Counter" or "ChangeTargets" abilities only target the Stack Zone
-            // No need to have each of those scripts have that info
-            if (abTgt != null) {
-                abTgt.setZone(ZoneType.Stack);
-            }
-        }
-
         if (abCost == null) {
             abCost = parseAbilityCost(state, mapParams, type);
         }
@@ -246,6 +237,10 @@ public final class AbilityFactory {
             spellAbility.putParam("PrecostDesc", "Exhaust — ");
         }
 
+        if (mapParams.containsKey("Named")) {
+            spellAbility.setName(mapParams.get("Named"));
+        }
+
         // *********************************************
         // set universal properties of the SpellAbility
 
@@ -268,7 +263,7 @@ public final class AbilityFactory {
             }
         }
 
-        if (api == ApiType.Charm || api == ApiType.GenericChoice || api == ApiType.AssignGroup || api == ApiType.VillainousChoice) {
+        if (api == ApiType.Charm || api == ApiType.GenericChoice || api == ApiType.AssignGroup || api == ApiType.VillainousChoice || api == ApiType.Vote) {
             final String key = "Choices";
             if (mapParams.containsKey(key)) {
                 List<String> names = Lists.newArrayList(mapParams.get(key).split(","));
@@ -320,89 +315,8 @@ public final class AbilityFactory {
     }
 
     private static TargetRestrictions readTarget(Map<String, String> mapParams) {
-        final String min = mapParams.getOrDefault("TargetMin", "1");
-        final String max = mapParams.getOrDefault("TargetMax", "1");
-
         // TgtPrompt should only be needed for more complicated ValidTgts
-        String tgtWhat = mapParams.get("ValidTgts");
-        final String prompt;
-        if (mapParams.containsKey("TgtPrompt")) {
-            prompt = mapParams.get("TgtPrompt");
-        } else if (tgtWhat.equals("Any")) {
-            prompt = "Select any target";
-        } else {
-            final String[] commonStuff = new String[] {
-                    //list of common one word non-core type ValidTgts that should be lowercase in the target prompt
-                    "Player", "Opponent", "Card", "Spell", "Permanent"
-            };
-            if (Arrays.asList(commonStuff).contains(tgtWhat) || CardType.CoreType.isValidEnum(tgtWhat)) {
-                tgtWhat = tgtWhat.toLowerCase();
-            }
-            prompt = "Select target " + tgtWhat;
-        }
-
-        TargetRestrictions abTgt = new TargetRestrictions(prompt, mapParams.get("ValidTgts").split(","), min, max);
-
-        if (mapParams.containsKey("TgtZone")) {
-            // if Targeting something not in play, this Key should be set
-            abTgt.setZone(ZoneType.listValueOf(mapParams.get("TgtZone")));
-        }
-
-        if (mapParams.containsKey("MaxTotalTargetCMC")) {
-            // only target cards up to a certain total max CMC
-            abTgt.setMaxTotalCMC(mapParams.get("MaxTotalTargetCMC"));
-        }
-
-        if (mapParams.containsKey("MaxTotalTargetPower")) {
-            // only target cards up to a certain total max power
-            abTgt.setMaxTotalPower(mapParams.get("MaxTotalTargetPower"));
-        }
-
-        // TargetValidTargeting most for Counter: e.g. target spell that targets X.
-        if (mapParams.containsKey("TargetValidTargeting")) {
-            abTgt.setSAValidTargeting(mapParams.get("TargetValidTargeting"));
-        }
-
-        if (mapParams.containsKey("TargetUnique")) {
-            abTgt.setUniqueTargets(true);
-        }
-        if (mapParams.containsKey("TargetsFromSingleZone")) {
-            abTgt.setSingleZone(true);
-        }
-        if (mapParams.containsKey("TargetsWithoutSameCreatureType")) {
-            abTgt.setWithoutSameCreatureType(true);
-        }
-        if (mapParams.containsKey("TargetsWithSameCreatureType")) {
-            abTgt.setWithSameCreatureType(true);
-        }
-        if (mapParams.containsKey("TargetsWithSameCardType")) {
-            abTgt.setWithSameCardType(true);
-        }
-        if (mapParams.containsKey("TargetsWithSameController")) {
-            abTgt.setSameController(true);
-        }
-        if (mapParams.containsKey("TargetsWithDifferentControllers")) {
-            abTgt.setDifferentControllers(true);
-        }
-        if (mapParams.containsKey("TargetsForEachPlayer")) {
-            abTgt.setForEachPlayer(true);
-        }
-        if (mapParams.containsKey("TargetsWithDifferentCMC")) {
-            abTgt.setDifferentCMC(true);
-        }
-        if (mapParams.containsKey("TargetsWithEqualToughness")) {
-            abTgt.setEqualToughness(true);
-        }
-        if (mapParams.containsKey("TargetsAtRandom")) {
-            abTgt.setRandomTarget(true);
-        }
-        if (mapParams.containsKey("RandomNumTargets")) {
-            abTgt.setRandomNumTargets(true);
-        }
-        if (mapParams.containsKey("TargetingPlayer")) {
-            abTgt.setMandatory(true);
-        }
-        return abTgt;
+        return new TargetRestrictions(mapParams);
     }
 
     /**

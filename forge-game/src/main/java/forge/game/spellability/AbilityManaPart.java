@@ -17,8 +17,6 @@
  */
 package forge.game.spellability;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import forge.card.ColorSet;
 import forge.card.GamePieceType;
@@ -50,9 +48,9 @@ import forge.game.zone.ZoneType;
 import forge.util.TextUtil;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -77,6 +75,7 @@ public class AbilityManaPart implements java.io.Serializable {
     private final String addsCounters;
     private final String triggersWhenSpent;
     private final boolean persistentMana;
+    private final boolean combatMana;
 
     private transient List<Mana> lastManaProduced = Lists.newArrayList();
 
@@ -107,7 +106,8 @@ public class AbilityManaPart implements java.io.Serializable {
         this.addsKeywordsUntil = params.get("AddsKeywordsUntil");
         this.addsCounters = params.get("AddsCounters");
         this.triggersWhenSpent = params.get("TriggersWhenSpent");
-        this.persistentMana = null != params.get("PersistentMana") && "True".equalsIgnoreCase(params.get("PersistentMana"));
+        this.persistentMana = params.containsKey("PersistentMana");
+        this.combatMana = params.containsKey("CombatMana");
     }
 
     public AbilityManaPart(final Card newSource, AbilityManaPart oldMana) {
@@ -121,6 +121,7 @@ public class AbilityManaPart implements java.io.Serializable {
         this.addsCounters = oldMana.addsCounters;
         this.triggersWhenSpent = oldMana.triggersWhenSpent;
         this.persistentMana = oldMana.persistentMana;
+        this.combatMana = oldMana.combatMana;
         // Do we need to copy over last mana produced somehow? Its kinda gross
     }
 
@@ -191,10 +192,8 @@ public class AbilityManaPart implements java.io.Serializable {
             }
         }
 
-        // add the mana produced to the mana pool
         manaPool.add(this.lastManaProduced);
 
-        // Run triggers
         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(source);
         runParams.put(AbilityKey.Player, player);
         runParams.put(AbilityKey.Produced, afterReplace);
@@ -252,7 +251,7 @@ public class AbilityManaPart implements java.io.Serializable {
         eff.setOwner(sourceCard.getController());
 
         eff.setImageKey(sourceCard.getImageKey());
-        eff.setColor(MagicColor.COLORLESS);
+        eff.setColor(ColorSet.C);
         eff.setGamePieceType(GamePieceType.EFFECT);
 
         String cantcounterstr = "Event$ Counter | ValidSA$ Spell.IsRemembered | Description$ That spell can't be countered.";
@@ -511,7 +510,7 @@ public class AbilityManaPart implements java.io.Serializable {
      * @return a {@link java.lang.String} object.
      */
     public final String mana(SpellAbility sa) {
-        if (isComboMana()) { // when asking combo, just go there
+        if (isComboMana()) {
             return getComboColors(sa);
         }
         String produced = this.getOrigProduced();
@@ -656,14 +655,8 @@ public class AbilityManaPart implements java.io.Serializable {
         }
         // replace Chosen for Spire colors
         if (origProduced.contains("ColorID")) {
-            Iterator<String> colors = Iterators.transform(sa.getHostCard().getMarkedColors().iterator(),
-                    new Function<>() {
-                        @Override
-                        public String apply(Byte b) {
-                            return MagicColor.toLongString(b);
-                        }
-                    });
-            origProduced = origProduced.replace("ColorID", getChosenColor(sa, () -> colors));
+            String str = sa.getHostCard().getMarkedColors().stream().map(c -> c.getShortName()).collect(Collectors.joining(" "));
+            origProduced = origProduced.replace("ColorID", str);
         }
         if (origProduced.contains("NotedColors")) {
             // Should only be used for Paliano, the High City
@@ -739,6 +732,9 @@ public class AbilityManaPart implements java.io.Serializable {
      */
     public boolean isPersistentMana() {
         return this.persistentMana;
+    }
+    public boolean isCombatMana() {
+        return this.combatMana;
     }
 
     boolean abilityProducesManaColor(final SpellAbility am, final byte neededColor) {

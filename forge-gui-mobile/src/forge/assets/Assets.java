@@ -30,6 +30,8 @@ import forge.localinstance.skin.FSkinProp;
 import java.util.HashMap;
 import java.util.Map;
 
+import static forge.assets.FSkin.getDefaultSkinFile;
+
 public class Assets implements Disposable {
     private MemoryTrackingAssetManager manager;
     private HashMap<Integer, FSkinFont> fonts;
@@ -51,6 +53,7 @@ public class Assets implements Disposable {
     private TextureParameter textureParameter;
     private ObjectMap<String, Font> textrafonts;
     private int cFB = 0, cFBVal = 0, cTM = 0, cTMVal = 0, cSF = 0, cSFVal = 0, cCF = 0, cCFVal = 0;
+    private Texture holofoil;
 
     public Assets() {
         String titleFilename = Forge.isLandscapeMode() ? "title_bg_lq.png" : "title_bg_lq_portrait.png";
@@ -80,41 +83,63 @@ public class Assets implements Disposable {
                     bitmapFont.dispose();
                 counterFonts.clear();
             }
+        } catch (Exception ignored) {}
+        try {
             if (fallback_skins != null) {
                 for (Texture texture : fallback_skins.values())
                     texture.dispose();
                 fallback_skins.clear();
             }
+        } catch (Exception ignored) {}
+        try {
             if (tmxMap != null) {
                 for (Texture texture : tmxMap.values())
                     texture.dispose();
                 tmxMap.clear();
             }
+        } catch (Exception ignored) {}
+        try {
             if (defaultImage != null)
                 defaultImage.dispose();
+        } catch (Exception ignored) {}
+        try {
             if (dummy != null)
                 dummy.dispose();
+        } catch (Exception ignored) {}
+        try {
             if (textrafonts != null) {
                 for (Font f : textrafonts.values())
                     f.dispose();
             }
+        } catch (Exception ignored) {}
+        if (cardArtCache != null)
             cardArtCache.clear();
+        if (avatarImages != null)
             avatarImages.clear();
+        if (manaImages != null)
             manaImages.clear();
+        if (symbolLookup != null)
             symbolLookup.clear();
+        if (images != null)
             images.clear();
+        if (avatars != null)
             avatars.clear();
+        if (sleeves != null)
             sleeves.clear();
+        if (cracks != null)
             cracks.clear();
+        if (borders != null)
             borders.clear();
+        if (deckbox != null)
             deckbox.clear();
+        if (cursor != null)
             cursor.clear();
+        if (fonts != null)
             fonts.clear();
+        try {
             if (manager != null)
                 manager.dispose();
-        } catch (Exception e) {
-            //e.printStackTrace();
-        }
+        } catch (Exception ignored) {}
     }
 
     public MemoryTrackingAssetManager manager() {
@@ -332,13 +357,21 @@ public class Assets implements Disposable {
         return dummy;
     }
 
+    public Texture getHolofoil() {
+        if (holofoil == null) {
+            holofoil = getTexture(getDefaultSkinFile("holofoil.png"));
+        }
+        return holofoil;
+    }
     public Font getTextraFont(BitmapFont bitmapFont, TextureAtlas item_atlas, TextureAtlas pixelmana_atlas) {
         if (textrafonts == null)
             textrafonts = new ObjectMap<>();
         if (!textrafonts.containsKey("textrafont")) {
-            Font font = new Font(bitmapFont);
-            font.addAtlas(item_atlas);
-            font.addAtlas(pixelmana_atlas);
+            Font font = new Font(bitmapFont, 0f, 2f, 0f, 1f);
+            font.addAtlas(item_atlas, 0f, 6f, 0f);
+            //problematic atlas since some buttons are small, and this is too big for some buttons, need a way to enable
+            //this via property
+            //font.addAtlas(pixelmana_atlas, -90f, 20f, 0f);
             font.integerPosition = false;
             textrafonts.put("textrafont", font);
         }
@@ -350,7 +383,7 @@ public class Assets implements Disposable {
             textrafonts = new ObjectMap<>();
         if (!textrafonts.containsKey("keysfont")) {
             Font font = new Font(bitmapFont);
-            font.addAtlas(keys_atlas);
+            font.addAtlas(keys_atlas, 0f, 6f, 0f);
             font.integerPosition = false;
             textrafonts.put("keysfont", font);
         }
@@ -361,8 +394,8 @@ public class Assets implements Disposable {
         if (textrafonts == null)
             textrafonts = new ObjectMap<>();
         if (!textrafonts.containsKey(name)) {
-            Font font = new Font(bitmapFont);
-            font.addAtlas(items_atlas);
+            Font font = new Font(bitmapFont, 0f, 2f, 0f, 1f);
+            font.addAtlas(items_atlas, 0f, 6f, 0f);
             font.integerPosition = false;
             textrafonts.put(name, font);
         }
@@ -373,7 +406,7 @@ public class Assets implements Disposable {
         if (textrafonts == null)
             textrafonts = new ObjectMap<>();
         if (!textrafonts.containsKey("GenericHeaderFont")) {
-            Font font = new Font(bitmapFont);
+            Font font = new Font(bitmapFont, 0f, -0.5f, 0f, -2.5f);
             font.integerPosition = false;
             textrafonts.put("GenericHeaderFont", font);
         }

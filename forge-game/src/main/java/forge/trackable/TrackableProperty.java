@@ -37,6 +37,7 @@ public enum TrackableProperty {
     Secondary(TrackableTypes.BooleanType),
     DoubleFaced(TrackableTypes.BooleanType),
     FacedownImageKey(TrackableTypes.StringType),
+    PaperFoil(TrackableTypes.BooleanType),
 
     //TODO?
     Cloner(TrackableTypes.StringType),
@@ -130,6 +131,7 @@ public enum TrackableProperty {
     FunctionalVariant(TrackableTypes.StringType),
     OracleText(TrackableTypes.StringType),
     RulesText(TrackableTypes.StringType),
+    OracleName(TrackableTypes.StringType),
     Power(TrackableTypes.IntegerType),
     Toughness(TrackableTypes.IntegerType),
     Loyalty(TrackableTypes.StringType),
@@ -137,6 +139,7 @@ public enum TrackableProperty {
     AttractionLights(TrackableTypes.IntegerSetType),
     ChangedColorWords(TrackableTypes.StringMapType),
     HasChangedColors(TrackableTypes.BooleanType),
+    HasPrintedPT(TrackableTypes.BooleanType),
     ChangedTypes(TrackableTypes.StringMapType),
 
     //check produce mana for BG

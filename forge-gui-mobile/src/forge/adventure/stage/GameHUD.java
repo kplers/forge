@@ -482,8 +482,7 @@ public class GameHUD extends Stage {
                 Current.player().addShards(-data.shardsNeeded);
                 ConsoleCommandInterpreter.getInstance().command(data.commandOnUse);
                 AdventureQuestController.instance().updateItemUsed(data);
-            });
-            button.setStyle(Controls.getTextButtonStyle("menu"));
+            }, "menu");
             abilityButtonMap.add(button);
         }
     }
@@ -894,7 +893,7 @@ public class GameHUD extends Stage {
             @Override
             public boolean act(float v) {
                 if (exitDungeon) {
-                    MapStage.getInstance().exitDungeon(false);
+                    MapStage.getInstance().exitDungeon(false, false);
                     setDisabled(exitToWorldMapActor, true, "[%120][+ExitToWorldMap]", "\u2613");
                     setDisabled(bookmarkActor, true, "[%120][+Bookmark]", "\u2613");
                 }
